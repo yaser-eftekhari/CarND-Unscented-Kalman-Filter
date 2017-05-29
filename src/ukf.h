@@ -132,6 +132,7 @@ private:
   void PredictLadarMeasurement(VectorXd& z_pred, MatrixXd& S);
   void RadarUpdateStateHelper(const VectorXd& z_pred, const MatrixXd& S, const VectorXd& z);
   void LadarUpdateStateHelper(const VectorXd& z_pred, const MatrixXd& S, const VectorXd& z);
+  void NormalizeAngle(double& angle);
 };
 
 #endif /* UKF_H */
