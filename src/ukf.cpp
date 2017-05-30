@@ -22,22 +22,23 @@ UKF::UKF() {
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   //TODO: find the correct initial value
-  std_a_ = 30;
+  std_a_ = 3;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
   //TODO: find the correct initial value
-  std_yawdd_ = 30;
+  std_yawdd_ = 3;
 
   // initial state vector
   x_ = VectorXd(n_x_);
+  x_.fill(0.0);
 
   // initial covariance matrix
   P_ = MatrixXd(n_x_, n_x_);
-  P_ <<  1, 0, 0, 0,0,
-        0, 1, 0, 0,0,
-        0, 0, 1000, 0,0,
-        0, 0, 0, 1000,0,
-        0,0,0,0,1000;
+  P_ << 1, 0, 0, 0, 0,
+        0, 1, 0, 0, 0,
+        0, 0, 1000, 0, 0,
+        0, 0, 0, 1000, 0,
+        0, 0, 0, 0, 1000;
 
   Q_ = MatrixXd(2, 2);
   Q_ << std_a_*std_a_, 0,
@@ -222,6 +223,8 @@ void UKF::GenerateAugmentedSigmaPoints(MatrixXd& Xsig_aug) {
   }
 
   //print result
+  cout << "GenerateAugmentedSigmaPoints: x_ = " << endl << x_ << endl;
+  cout << "GenerateAugmentedSigmaPoints: P_ = " << endl << P_ << endl;
   cout << "GenerateAugmentedSigmaPoints: Xsig_aug = " << endl << Xsig_aug << endl;
 }
 
@@ -328,15 +331,14 @@ void UKF::PredictRadarMeasurement(VectorXd& z_pred, MatrixXd& S) {
   }
 
   //calculate measurement covariance matrix S
-  VectorXd z_diff;
-  S = R_radar_;
   for(int i = 0; i < 2 * n_aug_ + 1; i++) {
-      z_diff = Zsig_radar.col(i) - z_pred;
+      VectorXd z_diff = Zsig_radar.col(i) - z_pred;
       //angle normalization
       NormalizeAngle(z_diff(1));
 
       S = S + weights_(i) * z_diff * z_diff.transpose();
   }
+  S = S + R_radar_;
 
   //print result
   cout << "PredictRadarMeasurement - z_pred: " << endl << z_pred << endl;
@@ -390,19 +392,13 @@ void UKF::RadarUpdateStateHelper(const VectorXd& z_pred, const MatrixXd& S, cons
   MatrixXd Tc = MatrixXd(n_x_, n_z_radar);
   Tc.fill(0.0);
 
-  //create matrix for Kalman gain
-  MatrixXd K = MatrixXd(n_x_, n_z_radar);
-  K.fill(0.0);
-
   //calculate cross correlation matrix
-  VectorXd x_diff;
-  VectorXd z_diff;
   for(int i = 0; i < 2 * n_aug_ + 1; i++) {
-      x_diff = Xsig_pred_.col(i) - x_;
+      VectorXd x_diff = Xsig_pred_.col(i) - x_;
       //angle normalization
       NormalizeAngle(x_diff(3));
 
-      z_diff = Zsig_radar.col(i) - z_pred;
+      VectorXd z_diff = Zsig_radar.col(i) - z_pred;
       //angle normalization
       NormalizeAngle(z_diff(1));
 
@@ -410,20 +406,20 @@ void UKF::RadarUpdateStateHelper(const VectorXd& z_pred, const MatrixXd& S, cons
   }
 
   //calculate Kalman gain K;
-  K = Tc*S.inverse();
-
-  //update state mean and covariance matrix
+  MatrixXd K = Tc*S.inverse();
 
   //residual
-  z_diff = z - z_pred;
+  VectorXd z_diff = z - z_pred;
 
   //angle normalization
   NormalizeAngle(z_diff(1));
 
+  //update state mean and covariance matrix
   x_ = x_ + K*z_diff;
   P_ = P_ - K*S*K.transpose();
 
   //print result
+  cout << "RadarUpdateStateHelper - z_diff: " << endl << z_diff << endl;
   cout << "RadarUpdateStateHelper - Updated state x: " << endl << x_ << endl;
   cout << "RadarUpdateStateHelper - Updated state covariance P: " << endl << P_ << endl;
 }
