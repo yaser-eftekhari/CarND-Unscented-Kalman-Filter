@@ -102,6 +102,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   if (!is_initialized_) {
     // cout << "UKF: initializing ..." << endl;
     //set the state with the initial location and zero velocity
+    float px, py;
     if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
       /**
       Convert radar from polar to cartesian coordinates and initialize state.
@@ -109,11 +110,20 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       const float ro = meas_package.raw_measurements_[0];
       const float phi = meas_package.raw_measurements_[1];
       const float rho_dot = meas_package.raw_measurements_[2];
-      x_ << ro * cos(phi), ro * sin(phi), 0, 0, 0;
+      px = ro * cos(phi);
+      py = ro * sin(phi);
     }
     else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
-      x_ << meas_package.raw_measurements_[0], meas_package.raw_measurements_[1], 0, 0, 0;
+      px = meas_package.raw_measurements_[0];
+      py = meas_package.raw_measurements_[1];
     }
+
+    // For stability of results
+    if ( fabs(px) == < 0.001 && fabs(py) < 0.001 ) {
+      px = 0.001;
+      py = 0.001;
+    }
+    x_ << px, py, 0, 0, 0;
 
     // done initializing, no need to predict or update
     is_initialized_ = true;
@@ -133,6 +143,12 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 
     time_us_ = meas_package.timestamp_;
 
+    // avoid big time differences by predicting in between
+    while (dt > 0.2) {
+      double step = 0.1;
+      Prediction(step);
+      dt -= step;
+    }
     Prediction(dt);
   }
   /*****************************************************************************
@@ -366,6 +382,11 @@ void UKF::PredictRadarMeasurement(VectorXd& z_pred, MatrixXd& S) {
     double p_y = Xsig_pred_(1,i);
     double v = Xsig_pred_(2,i);
     double yaw = Xsig_pred_(3,i);
+
+    // Avoid division by zero in the following steps
+    if(p_x < 0.001) p_x = 0.001;
+    if(p_y < 0.001) p_y = 0.001;
+
     Zsig_radar(0, i) = sqrt(p_x*p_x + p_y*p_y);
     Zsig_radar(1, i) = atan2(p_y, p_x);
     Zsig_radar(2, i) = (p_x*v*cos(yaw)+p_y*v*sin(yaw))/Zsig_radar(0, i);
