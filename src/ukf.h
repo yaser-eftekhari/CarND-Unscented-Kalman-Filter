@@ -137,12 +137,12 @@ public:
    */
    void UpdateRadar(const VectorXd& z);
 
+   void Init();
+
 private:
   void GenerateAugmentedSigmaPoints(MatrixXd& Xsig_aug);
   void SigmaPointPrediction(MatrixXd& Xsig_pred, const MatrixXd& Xsig_aug, const double delta_t);
-  // void SigmaPointPrediction(const MatrixXd& Xsig_aug, const double delta_t);
   void PredictMeanAndCovariance(const MatrixXd& Xsig_pred);
-  // void PredictMeanAndCovariance();
   void PredictRadarMeasurement(VectorXd& z_pred, MatrixXd& S);
   void PredictLadarMeasurement(VectorXd& z_pred, MatrixXd& S);
   void RadarUpdateStateHelper(const VectorXd& z_pred, const MatrixXd& S, const VectorXd& z);

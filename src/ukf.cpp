@@ -12,6 +12,10 @@ using std::vector;
  * Initializes Unscented Kalman filter
  */
 UKF::UKF() {
+  Init();
+}
+
+void UKF::Init() {
   // coef = sqrt(lambda_ + n_aug_);
 
   // if this is false, laser measurements will be ignored (except during init)
@@ -22,11 +26,11 @@ UKF::UKF() {
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   //TODO: find the correct initial value
-  std_a_ = 2.0;
+  std_a_ = 1.5;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
   //TODO: find the correct initial value
-  std_yawdd_ = 0.75;
+  std_yawdd_ = 1.0;
 
   total_ladar_measurements = 0;
   total_radar_measurements = 0;
@@ -159,11 +163,9 @@ void UKF::Prediction(double delta_t) {
 
   // predict generated sigma points
   SigmaPointPrediction(Xsig_pred_, Xsig_aug, delta_t);
-  // SigmaPointPrediction(Xsig_aug, delta_t);
 
   // calculate mean and covariance of the predicted sigma points
   PredictMeanAndCovariance(Xsig_pred_);
-  // PredictMeanAndCovariance();
 }
 
 /**
@@ -266,7 +268,6 @@ void UKF::GenerateAugmentedSigmaPoints(MatrixXd& Xsig_aug) {
 // augmented sigma point matrix
 // MatrixXd Xsig_aug = MatrixXd(n_aug_, 2 * n_aug_ + 1);
 void UKF::SigmaPointPrediction(MatrixXd& Xsig_pred, const MatrixXd& Xsig_aug, const double delta_t) {
-// void UKF::SigmaPointPrediction(const MatrixXd& Xsig_aug, const double delta_t) {
   //predict sigma points
   for (int i = 0; i < 2 * n_aug_ + 1; i++)
   {
@@ -322,7 +323,6 @@ void UKF::SigmaPointPrediction(MatrixXd& Xsig_pred, const MatrixXd& Xsig_aug, co
 // matrix with predicted sigma points
 // MatrixXd Xsig_pred = MatrixXd(n_x_, 2 * n_aug_ + 1);
 void UKF::PredictMeanAndCovariance(const MatrixXd& Xsig_pred) {
-// void UKF::PredictMeanAndCovariance() {
   //predict state mean
   x_.fill(0.0);
   P_.fill(0.0);

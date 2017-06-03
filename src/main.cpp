@@ -245,3 +245,146 @@ int main(int argc, char* argv[]) {
   cout << "Done!" << endl;
   return 0;
 }
+
+int opt_main(int argc, char* argv[]) {
+
+  check_arguments(argc, argv);
+
+  string in_file_name_ = argv[1];
+  ifstream in_file_(in_file_name_.c_str(), ifstream::in);
+
+  string out_file_name_ = argv[2];
+  ofstream out_file_(out_file_name_.c_str(), ofstream::out);
+
+  check_files(in_file_, in_file_name_, out_file_, out_file_name_);
+
+  /**********************************************
+   *  Set Measurements                          *
+   **********************************************/
+
+  vector<MeasurementPackage> measurement_pack_list;
+  vector<GroundTruthPackage> gt_pack_list;
+
+  string line;
+
+  // prep the measurement packages (each line represents a measurement at a
+  // timestamp)
+  while (getline(in_file_, line)) {
+    string sensor_type;
+    MeasurementPackage meas_package;
+    GroundTruthPackage gt_package;
+    istringstream iss(line);
+    long long timestamp;
+
+    // reads first element from the current line
+    iss >> sensor_type;
+
+    if (sensor_type.compare("L") == 0) {
+      // laser measurement
+
+      // read measurements at this timestamp
+      meas_package.sensor_type_ = MeasurementPackage::LASER;
+      meas_package.raw_measurements_ = VectorXd(2);
+      float px;
+      float py;
+      iss >> px;
+      iss >> py;
+      meas_package.raw_measurements_ << px, py;
+      iss >> timestamp;
+      meas_package.timestamp_ = timestamp;
+      measurement_pack_list.push_back(meas_package);
+    } else if (sensor_type.compare("R") == 0) {
+      // radar measurement
+
+      // read measurements at this timestamp
+      meas_package.sensor_type_ = MeasurementPackage::RADAR;
+      meas_package.raw_measurements_ = VectorXd(3);
+      float ro;
+      float phi;
+      float ro_dot;
+      iss >> ro;
+      iss >> phi;
+      iss >> ro_dot;
+      meas_package.raw_measurements_ << ro, phi, ro_dot;
+      iss >> timestamp;
+      meas_package.timestamp_ = timestamp;
+      measurement_pack_list.push_back(meas_package);
+    }
+
+      // read ground truth data to compare later
+      float x_gt;
+      float y_gt;
+      float vx_gt;
+      float vy_gt;
+      iss >> x_gt;
+      iss >> y_gt;
+      iss >> vx_gt;
+      iss >> vy_gt;
+      gt_package.gt_values_ = VectorXd(4);
+      gt_package.gt_values_ << x_gt, y_gt, vx_gt, vy_gt;
+      gt_pack_list.push_back(gt_package);
+  }
+
+  // Create a UKF instance
+  UKF ukf;
+
+  // used to compute the RMSE later
+  vector<VectorXd> estimations;
+  vector<VectorXd> ground_truth;
+
+  // start filtering from the second frame (the speed is unknown in the first
+  // frame)
+
+  size_t number_of_measurements = measurement_pack_list.size();
+  Tools tools;
+  cout << "RMSE should be below: [.09, .10, .40, .30]" << endl;
+
+  for (double std_a = 1.5; std_a <= 2.5; std_a += 0.1) {
+    for (double std_yawdd = 0.5; std_yawdd <= 1.5; std_yawdd += 0.1) {
+      estimations.clear();
+      ground_truth.clear();
+      ukf.Init();
+      ukf.std_a_ = std_a;
+      ukf.std_yawdd_ = std_yawdd;
+      for (size_t k = 0; k < number_of_measurements; ++k) {
+        // Call the UKF-based fusion
+        ukf.ProcessMeasurement(measurement_pack_list[k]);
+
+        // convert ukf x vector to cartesian to compare to ground truth
+        VectorXd ukf_x_cartesian_ = VectorXd(4);
+
+        float x_estimate_ = ukf.x_(0);
+        float y_estimate_ = ukf.x_(1);
+        float vx_estimate_ = ukf.x_(2) * cos(ukf.x_(3));
+        float vy_estimate_ = ukf.x_(2) * sin(ukf.x_(3));
+
+        ukf_x_cartesian_ << x_estimate_, y_estimate_, vx_estimate_, vy_estimate_;
+
+        estimations.push_back(ukf_x_cartesian_);
+        ground_truth.push_back(gt_pack_list[k].gt_values_);
+      }
+      cout << "std_a: " << std_a << "std_yawdd: " << std_yawdd << endl;
+      cout << std::setprecision(3) << "RMSE" << endl << tools.CalculateRMSE(estimations, ground_truth) << endl;
+      cout << "Total Ladar Measurements:" << ukf.total_ladar_measurements << endl;
+      cout << "Total Radar Measurements:" << ukf.total_radar_measurements << endl;
+      cout << "Ratio of Ladar NIS above High threshold:" << 1.0*ukf.NIS_ladar_above_high/ukf.total_ladar_measurements << endl;
+      cout << "Ratio of Ladar NIS above Low threshold:" << 1.0*ukf.NIS_ladar_above_low/ukf.total_ladar_measurements << endl;
+      cout << "Ratio of Radar NIS above High threshold:" << 1.0*ukf.NIS_radar_above_high/ukf.total_radar_measurements << endl;
+      cout << "Ratio of Radar NIS above Low threshold:" << 1.0*ukf.NIS_radar_above_low/ukf.total_radar_measurements << endl;
+    }
+  }
+
+  // compute the accuracy (RMSE)
+
+  // close files
+  if (out_file_.is_open()) {
+    out_file_.close();
+  }
+
+  if (in_file_.is_open()) {
+    in_file_.close();
+  }
+
+  cout << "Done!" << endl;
+  return 0;
+}
