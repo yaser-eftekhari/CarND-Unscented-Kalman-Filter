@@ -66,6 +66,7 @@ public:
 
   ///* state covariance matrix
   MatrixXd P_;
+  MatrixXd H_;
   MatrixXd Q_;
   MatrixXd R_radar_;
   MatrixXd R_ladar_;
@@ -85,9 +86,21 @@ public:
 
   ///* the current NIS for radar
   double NIS_radar_;
+  int total_radar_measurements;
+  int NIS_radar_above_low;
+  int NIS_radar_above_high;
+  const double NIS_radar_low = 0.352;
+  const double NIS_radar_high = 7.815;
 
   ///* the current NIS for laser
   double NIS_laser_;
+  int total_ladar_measurements;
+  int NIS_ladar_above_low;
+  int NIS_ladar_above_high;
+  const double NIS_ladar_low = 0.103;
+  const double NIS_ladar_high = 5.991;
+
+  Tools tools;
 
   /**
    * Constructor
@@ -122,12 +135,14 @@ public:
    * Updates the state and the state covariance matrix using a radar measurement
    * @param z The measurement at k+1
    */
-  void UpdateRadar(const VectorXd& z);
+   void UpdateRadar(const VectorXd& z);
 
 private:
   void GenerateAugmentedSigmaPoints(MatrixXd& Xsig_aug);
   void SigmaPointPrediction(MatrixXd& Xsig_pred, const MatrixXd& Xsig_aug, const double delta_t);
+  // void SigmaPointPrediction(const MatrixXd& Xsig_aug, const double delta_t);
   void PredictMeanAndCovariance(const MatrixXd& Xsig_pred);
+  // void PredictMeanAndCovariance();
   void PredictRadarMeasurement(VectorXd& z_pred, MatrixXd& S);
   void PredictLadarMeasurement(VectorXd& z_pred, MatrixXd& S);
   void RadarUpdateStateHelper(const VectorXd& z_pred, const MatrixXd& S, const VectorXd& z);

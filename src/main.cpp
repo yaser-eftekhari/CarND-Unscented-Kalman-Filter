@@ -4,6 +4,8 @@
 #include <sstream>
 #include <vector>
 #include <stdlib.h>
+#include <iomanip>
+
 #include "Eigen/Dense"
 #include "ukf.h"
 #include "ground_truth_package.h"
@@ -158,8 +160,7 @@ int main(int argc, char* argv[]) {
   out_file_ << "vy_ground_truth" << "\n";
 
 
- // for (size_t k = 0; k < number_of_measurements; ++k) {
-  for (size_t k = 0; k < 100; ++k) {
+ for (size_t k = 0; k < number_of_measurements; ++k) {
     // Call the UKF-based fusion
     ukf.ProcessMeasurement(measurement_pack_list[k]);
 
@@ -223,7 +224,8 @@ int main(int argc, char* argv[]) {
 
   // compute the accuracy (RMSE)
   Tools tools;
-  cout << "RMSE" << endl << tools.CalculateRMSE(estimations, ground_truth) << endl;
+  cout << "RMSE should be below: [.09, .10, .40, .30]" << endl;
+  cout << std::setprecision(3) << "RMSE" << endl << tools.CalculateRMSE(estimations, ground_truth) << endl;
 
   // close files
   if (out_file_.is_open()) {
@@ -234,6 +236,12 @@ int main(int argc, char* argv[]) {
     in_file_.close();
   }
 
+  cout << "Total Ladar Measurements:" << ukf.total_ladar_measurements << endl;
+  cout << "Total Radar Measurements:" << ukf.total_radar_measurements << endl;
+  cout << "Ratio of Ladar NIS above High threshold:" << 1.0*ukf.NIS_ladar_above_high/ukf.total_ladar_measurements << endl;
+  cout << "Ratio of Ladar NIS above Low threshold:" << 1.0*ukf.NIS_ladar_above_low/ukf.total_ladar_measurements << endl;
+  cout << "Ratio of Radar NIS above High threshold:" << 1.0*ukf.NIS_radar_above_high/ukf.total_radar_measurements << endl;
+  cout << "Ratio of Radar NIS above Low threshold:" << 1.0*ukf.NIS_radar_above_low/ukf.total_radar_measurements << endl;
   cout << "Done!" << endl;
   return 0;
 }
